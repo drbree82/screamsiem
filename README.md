@@ -25,6 +25,8 @@ curl -fsSL https://screamsiem-installer.flrgx-cxz.workers.dev/siem.sh \
 
 Wait until the command says `enrolled 1 host(s)`.
 
+During setup, the controller asks for your OpenAI API key. Type it into the hidden prompt and press Enter. This enables the live GPT-5.6 advisor. If you press Enter without a key, the monitor still works with its deterministic fallback investigator.
+
 ### 3. On your own computer, open the dashboard
 
 ```bash

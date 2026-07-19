@@ -36,7 +36,14 @@ chown -R screamsiem:screamsiem "$KEY_DIR"; chmod 600 "$KEY_DIR/id_ed25519"; chmo
 CONTROLLER_ADDRESS="${SCREAMSIEM_CONTROLLER_ADDRESS:-$(ip route get 1.1.1.1 2>/dev/null | sed -n 's/.* src \([^ ]*\).*/\1/p' | head -1)}"; CONTROLLER_ADDRESS="${CONTROLLER_ADDRESS:-$(hostname -I | awk '{print $1}')}"
 payload="$(python3 -c 'import json,sys; print(json.dumps({"public_key":open(sys.argv[1]).read().strip(),"controller_address":sys.argv[2],"controller_user":"screamsiem"},separators=(",",":")))' "$KEY_DIR/id_ed25519.pub" "$CONTROLLER_ADDRESS")"
 curl -fsS --retry 3 -X POST "$WORKER_URL/v1/enroll/$ENROLLMENT_CODE/controller" -H 'content-type: application/json' --data-binary "$payload" >/dev/null || die "could not publish controller key"
-OPENAI_API_KEY="${OPENAI_API_KEY:-}"; if [[ -z "$OPENAI_API_KEY" && -t 0 && -r /dev/tty ]]; then read -r -s -p 'OpenAI API key (optional): ' OPENAI_API_KEY < /dev/tty; echo; fi
+OPENAI_API_KEY="${OPENAI_API_KEY:-}"
+if [[ -z "$OPENAI_API_KEY" && -r "$CONFIG_DIR/screamsiem.env" ]]; then
+  OPENAI_API_KEY="$(sed -n 's/^OPENAI_API_KEY=//p' "$CONFIG_DIR/screamsiem.env" | tail -1)"
+fi
+if [[ -z "$OPENAI_API_KEY" && -r /dev/tty ]]; then
+  read -r -s -p 'OpenAI API key (optional; press Enter for deterministic fallback): ' OPENAI_API_KEY < /dev/tty
+  echo
+fi
 INTERNAL_SECRET="${SCREAMSIEM_INTERNAL_SECRET:-$(openssl rand -hex 32)}"; APPROVAL_SECRET="${SCREAMSIEM_APPROVAL_SECRET:-$(openssl rand -hex 32)}"
 printf 'SCREAMSIEM_HOST=127.0.0.1\nSCREAMSIEM_PORT=8080\nSCREAMSIEM_DATABASE=%s\nSCREAMSIEM_INTERNAL_SECRET=%s\nSCREAMSIEM_APPROVAL_SECRET=%s\nOPENAI_MODEL=gpt-5.6\nOPENAI_API_KEY=%s\n' "$DB_PATH" "$INTERNAL_SECRET" "$APPROVAL_SECRET" "$OPENAI_API_KEY" > "$CONFIG_DIR/screamsiem.env"
 chown root:screamsiem "$CONFIG_DIR/screamsiem.env"; chmod 640 "$CONFIG_DIR/screamsiem.env"

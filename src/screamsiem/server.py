@@ -101,6 +101,9 @@ def create_app(config: Settings|None=None, db: Database|None=None, supervisor=No
     async def dashboard(request:Request): return TEMPLATES.TemplateResponse(request=request,name="dashboard.html",context={"csrf":state.csrf})
     @app.get("/healthz")
     async def healthz(): return {"status":"ok","version":"0.1.0"}
+    @app.get("/api/status")
+    async def api_status():
+        return {"status":"ok","ai":{"enabled":bool(config.openai_api_key),"model":config.openai_model,"mode":"live" if config.openai_api_key else "deterministic-fallback"}}
     @app.get("/readyz")
     async def readyz():
         if database.db is None: raise HTTPException(503,"database unavailable")
