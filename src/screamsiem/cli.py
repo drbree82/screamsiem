@@ -28,7 +28,9 @@ def main():
     elif args.command=="auth":
         if not shutil.which(settings.codex_command):
             raise SystemExit(f"Codex CLI not found: {settings.codex_command}. Install @openai/codex first.")
-        command=[settings.codex_command,"login",args.auth_command]
+        command=[settings.codex_command,"login"]
+        if args.auth_command == "status":
+            command.append("status")
         if args.auth_command == "login" and args.device_auth:
             command.append("--device-auth")
             print("Copy the URL and device code printed below into a browser on another computer.", flush=True)
