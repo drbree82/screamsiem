@@ -2,7 +2,9 @@
 
 ScreamSIEM is a lightweight, AI-assisted Linux security monitor for small fleets. It connects to Linux hosts over SSH, learns a baseline from ordinary Unix interfaces, watches processes, sockets, services, journal/log streams and metrics, detects suspicious changes deterministically, and uses GPT-5.6 to investigate bounded evidence through local read-only MCP tools.
 
-## Start here: three easy commands
+## Start here: install the fleet monitor
+
+The installer runs on the SIEM/controller machine as root. It creates the `screamsiem` service account, installs the Python application and Codex CLI when needed, enrolls monitored hosts, and starts a loopback-only systemd service. The monitored-host script runs once on each Linux host.
 
 Use the same long code in both commands. Replace `YOUR_CODE` with your own random code.
 
@@ -26,6 +28,18 @@ curl -fsSL https://screamsiem-installer.flrgx-cxz.workers.dev/siem.sh \
 Wait until the command says `enrolled 1 host(s)`.
 
 During setup, choose `codex` to use a ChatGPT subscription through Codex. The headless installer prints a one-time device-auth URL and code; open that URL on any computer, sign in with ChatGPT, and enter the code. No API key is stored. Choose `api` for usage-based API-key access, or `fallback` for deterministic-only operation.
+
+For a non-interactive provider choice, set it through `sudo env` so it reaches the installer running as root:
+
+```bash
+curl -fsSL https://screamsiem-installer.flrgx-cxz.workers.dev/siem.sh \
+  | sudo env SCREAMSIEM_AI_PROVIDER=codex bash -s -- \
+    --enrollment-code 'YOUR_CODE' \
+    --install-dir /opt/screamsiem-controller \
+    --cidr 192.168.68.0/24
+```
+
+When `codex` is selected, the server prints a URL and device code. Copy both into a browser on another computer, complete ChatGPT sign-in, and leave the installer terminal open until it confirms login and finishes. The credentials are kept in the service account's private `CODEX_HOME`; ScreamSIEM does not read or copy them.
 
 ### 3. On your own computer, open the dashboard
 
@@ -64,9 +78,9 @@ The dashboard distinguishes configuration from execution: `gpt-5.6 · live` mean
 
 The repository is MIT licensed. The deterministic demo is self-contained and does not need SSH access, root, or an OpenAI key.
 
-## Quickstart
+## Local development and provider setup
 
-Requirements: Python 3.12+.
+Requirements: Python 3.12+. Add Node.js/npm only when using local Codex authentication; the Linux installer installs them on apt-based systems when needed.
 
 ```bash
 python3 -m pip install -e .
@@ -93,6 +107,8 @@ SCREAMSIEM_AI_PROVIDER=codex screamsiem serve
 
 For the systemd installer, select `codex` when prompted. It installs the CLI when needed, stores its session under the service account's `CODEX_HOME`, and prints the same browser URL/code flow. Authentication is provided by Codex CLI; ScreamSIEM never reads or persists the Codex credentials.
 
+To update an existing installed controller, rerun the same `siem.sh` command with its original `--install-dir`. The installer fast-forwards the checkout, preserves the enrollment data, and rewrites the provider configuration.
+
 ## Real SSH host
 
 ```bash
@@ -105,6 +121,34 @@ screamsiem serve
 ```
 
 The server restores registered hosts, allocates a loopback MCP port in `9100-9199`, and launches a per-host bridge with a `0600` configuration. The bridge owns only that host's SSH connection and typed tools. Host-key verification is enabled by default; `--insecure-skip-host-key-check` is intentionally marked unsafe and is for disposable demos only.
+
+## Deploy or update the Cloudflare installer Worker
+
+The public curl URL is served by the Worker in [`cloudflare/installer-worker`](cloudflare/installer-worker). Its `assets.directory` points at `../../installers`, so deploying from that directory publishes the current `monitored.sh`, `siem.sh`, and `demo.sh` files.
+
+First-time setup requires a Cloudflare login and an `ENROLLMENTS` KV namespace. Put the resulting namespace ID in `cloudflare/installer-worker/wrangler.jsonc`:
+
+```bash
+cd cloudflare/installer-worker
+npx --yes wrangler@latest login
+npx --yes wrangler@latest kv namespace create ENROLLMENTS --update-config
+npx --yes wrangler@latest deploy
+```
+
+For later source or installer changes, deploy from the same directory:
+
+```bash
+npx --yes wrangler@latest deploy
+```
+
+The deployed URL becomes `SCREAMSIEM_INSTALLER_URL`. Verify the published assets before using them for enrollment:
+
+```bash
+curl -fsSL https://YOUR-WORKER.workers.dev/monitored.sh | head
+curl -fsSL https://YOUR-WORKER.workers.dev/siem.sh | head
+```
+
+The current deployment is `https://screamsiem-installer.flrgx-cxz.workers.dev`.
 
 ## Curl-based fleet enrollment: details
 
