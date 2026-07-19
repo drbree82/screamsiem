@@ -4,7 +4,9 @@ from ..events import make_event
 
 
 class ServiceCollector:
-    def __init__(self, transport, host_id, emit): self.transport,self.host_id,self.emit=transport,host_id,emit; self.previous={}
+    def __init__(self, transport, host_id, emit, baseline=None):
+        self.transport,self.host_id,self.emit=transport,host_id,emit
+        self.previous={s.get("unit"):s.get("state") for s in (baseline or []) if s.get("unit")}
     async def sample(self):
         result=await self.transport.run(["systemctl","list-units","--type=service","--all","--no-legend","--no-pager"]); current={}
         for line in result.stdout.splitlines():

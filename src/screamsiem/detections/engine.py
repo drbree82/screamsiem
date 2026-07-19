@@ -43,7 +43,10 @@ class DetectorEngine:
 
     @staticmethod
     def _listener_key(data: dict) -> str:
-        return f"{data.get('protocol','tcp')}|{data.get('address',data.get('local_address',''))}|{data.get('port')}|{data.get('pid','')}|{data.get('process','')}"
+        # Process names/PIDs are often hidden from an unprivileged `ss -p`
+        # invocation and PIDs can change when a service restarts. The socket
+        # endpoint is the stable identity for listener correlation.
+        return f"{data.get('protocol','tcp')}|{data.get('address',data.get('local_address',''))}|{data.get('port')}"
 
     @staticmethod
     def _finding(event: Event, detector: str, correlation: str, severity: str, title: str, summary: str) -> Finding:

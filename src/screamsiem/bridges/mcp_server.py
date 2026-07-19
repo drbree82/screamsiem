@@ -70,7 +70,7 @@ class HostBridge:
             if self.central_emit: await self.central_emit(e)
         async def metric(m):
             if self.central_emit: await self.central_emit(m)
-        for collector in [Collector("process",5,ProcessCollector(self.transport,self.host_id,event).sample),Collector("socket",5,SocketCollector(self.transport,self.host_id,event).sample),Collector("service",30,ServiceCollector(self.transport,self.host_id,event).sample),Collector("metrics",2,MetricsCollector(self.transport,self.host_id,metric).sample)]: collector.start(); self.collectors.append(collector)
+        for collector in [Collector("process",5,ProcessCollector(self.transport,self.host_id,event,self.baseline.get("processes",[])).sample),Collector("socket",5,SocketCollector(self.transport,self.host_id,event,self.baseline.get("listeners",[])).sample),Collector("service",30,ServiceCollector(self.transport,self.host_id,event,self.baseline.get("services",[])).sample),Collector("metrics",2,MetricsCollector(self.transport,self.host_id,metric).sample)]: collector.start(); self.collectors.append(collector)
         from ..collectors.file_tail import FileTailCollector
         from ..collectors.journal import JournalCollector
         journal=JournalCollector(self.transport,self.host_id,event); self.stream_tasks.append(asyncio.create_task(journal.run()))
