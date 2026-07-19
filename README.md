@@ -1,31 +1,83 @@
 # ScreamSIEM
 
-ScreamSIEM is a small AI-assisted Linux security monitor for a handful of hosts. It connects over SSH, builds a baseline from ordinary Unix interfaces, watches processes, sockets, services, journal/log streams and metrics, creates deterministic findings, and lets GPT-5.6 explain bounded evidence through local read-only MCP tools.
+ScreamSIEM is a lightweight, AI-assisted Linux security monitor for small fleets. It connects to Linux hosts over SSH, learns a baseline from ordinary Unix interfaces, watches processes, sockets, services, journal/log streams and metrics, detects suspicious changes deterministically, and uses GPT-5.6 to investigate bounded evidence through local read-only MCP tools.
 
-## Run the deterministic demo
+## Submission details
+
+- Chosen track: Developer Tools
+- Code: [github.com/drbree82/screamsiem](https://github.com/drbree82/screamsiem)
+- Primary Codex build session: `019f7866-4331-7fa0-a233-5c2ac4eb6464`
+- Demo video: add the public YouTube URL to `SUBMISSION.md` after publishing
+
+The repository is MIT licensed. The deterministic demo is self-contained and does not need SSH access, root, or an OpenAI key.
+
+## Quickstart
+
+Requirements: Python 3.12+.
 
 ```bash
 python3 -m pip install -e .
 ./scripts/demo.sh
 ```
 
-Open `http://127.0.0.1:8080/`. The demo creates a baseline, injects a suspicious `/tmp` listener event, produces a critical finding, and uses the deterministic investigator fallback when no API key is configured.
+Open [http://127.0.0.1:8080/](http://127.0.0.1:8080/). The demo creates a fake Linux host and baseline, injects a suspicious `/tmp` listener, creates a critical finding, runs the deterministic GPT-shaped fallback when no key is configured, and shows the approval/manual-action distinction.
+
+To use GPT-5.6 for live investigations, set the key before starting the server:
+
+```bash
+export OPENAI_API_KEY="..."
+export OPENAI_MODEL="gpt-5.6"
+screamsiem serve
+```
 
 ## Real SSH host
 
 ```bash
-screamsiem host add --name web-01 --address 192.168.1.20 --user siem --identity ~/.ssh/id_ed25519
+screamsiem host add \
+  --name web-01 \
+  --address 192.168.1.20 \
+  --user siem \
+  --identity ~/.ssh/id_ed25519
 screamsiem serve
 ```
 
-Each host is assigned a loopback-only MCP port in `9100-9199`; the supervisor launches a separate `bridge_main` process with a `0600` per-host config. The bridge keeps that host's SSH configuration, collectors and typed tools. GPT receives read-only tool schemas; mutation tools require a short-lived HMAC token created only after a human approves the exact action.
+The server restores registered hosts, allocates a loopback MCP port in `9100-9199`, and launches a per-host bridge with a `0600` configuration. The bridge owns only that host's SSH connection and typed tools. Host-key verification is enabled by default; `--insecure-skip-host-key-check` is intentionally marked unsafe and is for disposable demos only.
 
-## Layout and verification
+## How to test
 
-The named components are intentionally direct: `server`, `bridges`, `ssh`, `collectors`, `parsers`, `baselines`, `detections`, `investigator`, and `approvals`. Run `make test`; ordinary tests must not need SSH, root, or an OpenAI key.
+Run the full offline suite:
 
-GPT-5.6 integration is configurable with `OPENAI_API_KEY` and `OPENAI_MODEL`; Codex was used to implement and verify the bounded investigation, local MCP boundary, and approval flow described by the specification.
+```bash
+make test
+```
 
-## Security boundaries
+The 11 tests cover parsers, stable fingerprints, P0 detectors, loopback bridge routing, bounded read tools, approval signatures, argument mismatch, expiry/replay protection, manual-command validation, the HTTP dashboard, deterministic finding creation, and approved fake remediation. Tests never require network access, root, an SSH server, or an OpenAI key.
 
-There is no generic shell MCP tool. Private keys and approval secrets never enter model input. Log/process content is untrusted evidence. Manual commands are display-only. See [SECURITY.md](SECURITY.md) for limitations and deployment warnings.
+The included sample data is generated at runtime by `scripts/demo.sh`; no external fixture download is needed. For a real SSH demo, `scripts/demo_attack.sh` prints the reversible command `python3 -m http.server 4444 --directory /tmp`.
+
+## What judges should look for
+
+1. Start the deterministic demo and open the dashboard.
+2. Watch the green host state and live SSE connection.
+3. Observe the full-width red critical banner for the unexpected listener and suspicious `/tmp` process.
+4. Review the evidence, confidence, structured assessment, and action cards.
+5. Approve the typed process-stop action; the exact action is signed, validated by the bridge, executed once, and written to the timeline.
+6. Contrast it with the model-generated manual command, which is copy-only and never automatically executed.
+
+## Architecture
+
+The central FastAPI server owns SQLite persistence, baselines, deterministic detection, investigation orchestration, approvals, the dashboard and SSE. Each host has an SSH-native bridge with collectors and a loopback-only FastMCP boundary. GPT-5.6 sees bounded evidence and read-only function schemas; it never receives private keys, approval secrets, arbitrary shell access, or mutable tools during investigation.
+
+The main components are deliberately explicit: `server`, `bridges`, `ssh`, `collectors`, `parsers`, `baselines`, `detections`, `investigator`, and `approvals`.
+
+## How Codex and GPT-5.6 were used
+
+Codex accelerated the workflow by turning the specification archive into a concrete implementation plan, scaffolding the Python package and SQLite model, writing the parser/detector/approval tests, iterating on the FastAPI/MCP integration, and repeatedly running the offline suite plus the loopback demo. Key implementation decisions were to keep detection deterministic, isolate each host behind a typed bridge, use fake SSH/GPT paths for reproducible tests, and require exact human approval before any mutation.
+
+GPT-5.6 is the runtime investigator, not the detector or approver. It receives a bounded finding bundle, may request additional evidence through read-only MCP function calls, returns a validated structured assessment, and categorises recommendations as `mcp_action`, `manual_command`, or `advisory`. If the API is unavailable, the deterministic finding remains visible and the safe fallback explains that AI analysis is unavailable.
+
+## Security and limitations
+
+There is no generic shell MCP tool. Private keys and approval secrets never enter model input. Log/process content is treated as untrusted evidence. Mutation tokens bind the action ID, host, tool, exact canonical arguments, expiry and single-use nonce. Manual commands are display-only.
+
+This is a Build Week MVP, not a production SOC. SQLite is not tamper-proof, a compromised host can lie to user-space collectors, polling can miss very short-lived events, and model-generated recommendations require human review. See [SECURITY.md](SECURITY.md).
