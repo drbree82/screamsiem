@@ -1,0 +1,7 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ScreamSIEM</title><link rel="stylesheet" href="/static/app.css"></head><body>
+<div id="critical-banner" class="critical-banner hidden">⚠ CRITICAL SECURITY FINDING <span id="critical-text"></span></div>
+<header><div><span class="eyebrow">SSH-NATIVE INCIDENT RESPONSE</span><h1>SCREAM<span>SIEM</span></h1></div><button id="sound">Enable sound</button></header>
+<main><section class="summary"><div><small>FLEET STATUS</small><strong id="fleet">—</strong></div><div><small>ACTIVE FINDINGS</small><strong id="finding-count">0</strong></div><div><small>EVENTS / MIN</small><strong id="event-rate">—</strong></div><div><small>HOSTS ONLINE</small><strong id="online">0 / 0</strong></div></section>
+<section><div class="section-title"><h2>Incidents</h2><span id="live">LIVE · SSE</span></div><div id="findings" class="findings"><div class="empty">No findings. The fleet is quiet.</div></div></section>
+<section><div class="section-title"><h2>Hosts</h2><button id="refresh">Refresh</button></div><div id="hosts" class="hosts"></div></section></main>
+<script>window.SCREAMSIEM={csrf:{{ csrf|tojson }}};</script><script src="/static/app.js"></script></body></html>

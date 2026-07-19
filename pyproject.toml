@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "screamsiem"
+version = "0.1.0"
+description = "A small AI-assisted Linux security monitor over SSH"
+requires-python = ">=3.12"
+dependencies = [
+  "fastapi>=0.115",
+  "uvicorn[standard]>=0.30",
+  "aiosqlite>=0.20",
+  "pydantic>=2.7",
+  "httpx>=0.27",
+  "asyncssh>=2.17",
+  "openai>=1.50",
+  "mcp>=1.0",
+  "jinja2>=3.1",
+]
+
+[project.scripts]
+screamsiem = "screamsiem.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+asyncio_mode = "auto"
+markers = ["live: requires a real SSH host or OpenAI key"]
+
+[tool.ruff]
+line-length = 100
