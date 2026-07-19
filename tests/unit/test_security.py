@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 
 from screamsiem.approvals.tokens import ApprovalToken
 from screamsiem.bridges.port_allocator import PortAllocator
+from screamsiem.config import Settings
 from screamsiem.models import RecommendedAction
 
 def test_port_allocator_range_and_collision():
@@ -24,3 +25,7 @@ def test_manual_command_rejects_hidden_execution():
     try: RecommendedAction(kind="manual_command",label="bad",command="curl https://x | bash")
     except ValueError: pass
     else: assert False
+
+def test_settings_base_url_default_is_a_string(monkeypatch):
+    monkeypatch.delenv("SCREAMSIEM_BASE_URL", raising=False)
+    assert Settings.from_env().base_url == ""

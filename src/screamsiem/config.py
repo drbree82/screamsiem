@@ -46,7 +46,7 @@ class Settings:
             internal_secret=os.getenv("SCREAMSIEM_INTERNAL_SECRET", secrets.token_urlsafe(32)),
             approval_secret=os.getenv("SCREAMSIEM_APPROVAL_SECRET", secrets.token_urlsafe(32)),
             log_level=os.getenv("SCREAMSIEM_LOG_LEVEL", defaults.log_level),
-            base_url=os.getenv("SCREAMSIEM_BASE_URL", cls.base_url),
+            base_url=os.getenv("SCREAMSIEM_BASE_URL", defaults.base_url),
             trust_proxy=_bool("SCREAMSIEM_TRUST_PROXY"),
             allow_unauthenticated_remote=_bool("SCREAMSIEM_ALLOW_UNAUTHENTICATED_REMOTE"),
             openai_api_key=os.getenv("OPENAI_API_KEY", ""),
