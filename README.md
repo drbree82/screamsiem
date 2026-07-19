@@ -63,6 +63,8 @@ curl -fsSL https://screamsiem-installer.flrgx-cxz.workers.dev/siem.sh \
 
 The monitored bootstrap creates the dedicated `screamsiem` SSH account, registers bounded host metadata, and installs a short-lived systemd poller. The SIEM bootstrap generates its SSH keypair locally, publishes only the public key to the enrollment Worker, discovers enrolled addresses plus local ARP/mDNS/nmap candidates, verifies the host marker over SSH, imports the hosts, and starts the systemd service.
 
+If `/opt/screamsiem` is already occupied by another checkout, add `--install-dir /opt/screamsiem-controller` to the SIEM command. The bootstrap never removes an existing non-ScreamSIEM directory.
+
 No private key is uploaded to Cloudflare. The dashboard remains loopback-only; access it through an SSH tunnel unless you deliberately configure an authenticated reverse proxy.
 
 ## How to test

@@ -12,14 +12,17 @@ KEY_DIR="$CONFIG_DIR/ssh"; DB_PATH="$DATA_DIR/screamsiem.db"
 die() { echo "screamsiem-siem: $*" >&2; exit 1; }
 need() { command -v "$1" >/dev/null 2>&1 || die "missing required command: $1"; }
 [[ "$(id -u)" == 0 ]] || die "run with sudo"
-while [[ $# -gt 0 ]]; do case "$1" in --enrollment-code) ENROLLMENT_CODE="${2:?missing code}"; shift 2;; --worker-url) WORKER_URL="${2:?missing URL}"; shift 2;; --repo-url) REPO_URL="${2:?missing URL}"; shift 2;; --cidr) SCREAMSIEM_CIDR="${2:?missing CIDR}"; shift 2;; -h|--help) sed -n '1,20p' "$0"; exit 0;; *) die "unknown option: $1";; esac; done
+while [[ $# -gt 0 ]]; do case "$1" in --enrollment-code) ENROLLMENT_CODE="${2:?missing code}"; shift 2;; --worker-url) WORKER_URL="${2:?missing URL}"; shift 2;; --repo-url) REPO_URL="${2:?missing URL}"; shift 2;; --install-dir) INSTALL_DIR="${2:?missing install directory}"; shift 2;; --data-dir) DATA_DIR="${2:?missing data directory}"; shift 2;; --config-dir) CONFIG_DIR="${2:?missing config directory}"; shift 2;; --cidr) SCREAMSIEM_CIDR="${2:?missing CIDR}"; shift 2;; -h|--help) sed -n '1,28p' "$0"; exit 0;; *) die "unknown option: $1";; esac; done
+KEY_DIR="$CONFIG_DIR/ssh"; DB_PATH="$DATA_DIR/screamsiem.db"
 [[ "$ENROLLMENT_CODE" =~ ^[A-Za-z0-9._:-]{12,128}$ ]] || die "pass the same enrollment code used on hosts"
 need curl; need python3; need ssh; need ssh-keygen; need ip; need systemctl; need sudo
 if command -v apt-get >/dev/null 2>&1; then apt-get update -qq; DEBIAN_FRONTEND=noninteractive apt-get install -y -qq git python3-venv openssh-client iproute2 openssl nmap >/dev/null; fi
 id screamsiem >/dev/null 2>&1 || useradd --create-home --shell /bin/bash screamsiem
+if [[ -e "$INSTALL_DIR" && ! -d "$INSTALL_DIR/.git" ]]; then
+  die "$INSTALL_DIR exists and is not a ScreamSIEM checkout; rerun with --install-dir /opt/screamsiem-controller"
+fi
 install -d -m 755 "$INSTALL_DIR" "$DATA_DIR" "$CONFIG_DIR" "$KEY_DIR"; chown -R screamsiem:screamsiem "$INSTALL_DIR" "$DATA_DIR"; chmod 700 "$KEY_DIR"
 if [[ -d "$INSTALL_DIR" ]]; then
-  [[ -d "$INSTALL_DIR/.git" ]] || die "$INSTALL_DIR exists and is not a ScreamSIEM checkout; choose another --install-dir"
   git -C "$INSTALL_DIR" pull --ff-only
 else
   git clone --depth 1 "$REPO_URL" "$INSTALL_DIR"
