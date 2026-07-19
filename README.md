@@ -102,7 +102,7 @@ To use ChatGPT browser authentication on a local or headless machine, install th
 ```bash
 npm install --global @openai/codex
 SCREAMSIEM_AI_PROVIDER=codex screamsiem auth login --device-auth
-SCREAMSIEM_AI_PROVIDER=codex screamsiem serve
+CODEX_MODEL=gpt-5.6-sol SCREAMSIEM_AI_PROVIDER=codex screamsiem serve
 ```
 
 For the systemd installer, select `codex` when prompted. It installs the CLI when needed, stores its session under the service account's `CODEX_HOME`, and prints the same browser URL/code flow. Authentication is provided by Codex CLI; ScreamSIEM never reads or persists the Codex credentials.

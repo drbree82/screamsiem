@@ -27,6 +27,7 @@ class Settings:
     openai_api_key: str = ""
     openai_model: str = "gpt-5.6"
     codex_command: str = "codex"
+    codex_model: str = "gpt-5.6-sol"
     openai_reasoning_effort: str = "medium"
     openai_max_tool_calls: int = 8
     investigation_timeout_seconds: int = 60
@@ -55,6 +56,7 @@ class Settings:
             openai_api_key=os.getenv("OPENAI_API_KEY", ""),
             openai_model=os.getenv("OPENAI_MODEL", defaults.openai_model),
             codex_command=os.getenv("SCREAMSIEM_CODEX_COMMAND", defaults.codex_command),
+            codex_model=os.getenv("CODEX_MODEL", defaults.codex_model),
             openai_reasoning_effort=os.getenv("OPENAI_REASONING_EFFORT", defaults.openai_reasoning_effort),
             openai_max_tool_calls=int(os.getenv("OPENAI_MAX_TOOL_CALLS", defaults.openai_max_tool_calls)),
             investigation_timeout_seconds=int(os.getenv("OPENAI_INVESTIGATION_TIMEOUT_SECONDS", defaults.investigation_timeout_seconds)),

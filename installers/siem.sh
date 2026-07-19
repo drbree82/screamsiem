@@ -54,14 +54,18 @@ if [[ "$AI_PROVIDER" == "codex" ]]; then
     need npm
     npm install --global --quiet @openai/codex || die 'could not install the Codex CLI'
   fi
-  echo 'Starting headless Codex device login. Copy the printed URL and code into a browser on another computer.'
-  sudo -u screamsiem -H env CODEX_HOME="$CONFIG_DIR/codex" "$INSTALL_DIR/.venv/bin/screamsiem" auth login --device-auth < /dev/tty || die 'Codex device login failed; rerun `sudo -u screamsiem -H CODEX_HOME='"$CONFIG_DIR/codex"' codex login --device-auth`'
+  if sudo -u screamsiem -H env CODEX_HOME="$CONFIG_DIR/codex" codex login status >/dev/null 2>&1; then
+    echo 'Existing Codex ChatGPT login found; reusing it.'
+  else
+    echo 'Starting headless Codex device login. Copy the printed URL and code into a browser on another computer.'
+    sudo -u screamsiem -H env CODEX_HOME="$CONFIG_DIR/codex" "$INSTALL_DIR/.venv/bin/screamsiem" auth login --device-auth < /dev/tty || die 'Codex device login failed; rerun `sudo -u screamsiem -H CODEX_HOME='"$CONFIG_DIR/codex"' codex login --device-auth`'
+  fi
 elif [[ "$AI_PROVIDER" == "api" && -z "$OPENAI_API_KEY" && -r /dev/tty ]]; then
   read -r -s -p 'OpenAI API key (optional; press Enter for deterministic fallback): ' OPENAI_API_KEY < /dev/tty
   echo
 fi
 INTERNAL_SECRET="${SCREAMSIEM_INTERNAL_SECRET:-$(openssl rand -hex 32)}"; APPROVAL_SECRET="${SCREAMSIEM_APPROVAL_SECRET:-$(openssl rand -hex 32)}"
-printf 'SCREAMSIEM_HOST=127.0.0.1\nSCREAMSIEM_PORT=8080\nSCREAMSIEM_DATABASE=%s\nSCREAMSIEM_INTERNAL_SECRET=%s\nSCREAMSIEM_APPROVAL_SECRET=%s\nSCREAMSIEM_AI_PROVIDER=%s\nCODEX_HOME=%s\nOPENAI_MODEL=gpt-5.6\nOPENAI_API_KEY=%s\n' "$DB_PATH" "$INTERNAL_SECRET" "$APPROVAL_SECRET" "$AI_PROVIDER" "$CONFIG_DIR/codex" "$OPENAI_API_KEY" > "$CONFIG_DIR/screamsiem.env"
+printf 'SCREAMSIEM_HOST=127.0.0.1\nSCREAMSIEM_PORT=8080\nSCREAMSIEM_DATABASE=%s\nSCREAMSIEM_INTERNAL_SECRET=%s\nSCREAMSIEM_APPROVAL_SECRET=%s\nSCREAMSIEM_AI_PROVIDER=%s\nCODEX_HOME=%s\nCODEX_MODEL=gpt-5.6-sol\nOPENAI_MODEL=gpt-5.6\nOPENAI_API_KEY=%s\n' "$DB_PATH" "$INTERNAL_SECRET" "$APPROVAL_SECRET" "$AI_PROVIDER" "$CONFIG_DIR/codex" "$OPENAI_API_KEY" > "$CONFIG_DIR/screamsiem.env"
 chown root:screamsiem "$CONFIG_DIR/screamsiem.env"; chmod 640 "$CONFIG_DIR/screamsiem.env"
 KNOWN_HOSTS="$KEY_DIR/known_hosts"; touch "$KNOWN_HOSTS"; chown screamsiem:screamsiem "$KNOWN_HOSTS"; chmod 600 "$KNOWN_HOSTS"
 CIDR="${SCREAMSIEM_CIDR:-$(ip route show scope link 2>/dev/null | awk '$1 ~ /^[0-9].*\/[0-9]+$/ {print $1; exit}')}"

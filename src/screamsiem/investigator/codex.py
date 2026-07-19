@@ -32,7 +32,7 @@ class CodexInvestigator(GPTInvestigator):
     def __init__(
         self,
         command: str = "codex",
-        model: str = "gpt-5.6",
+        model: str = "gpt-5.6-sol",
         timeout: int = 60,
         max_tool_calls: int = 8,
         process_runner: ProcessRunner | None = None,

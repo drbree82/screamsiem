@@ -57,7 +57,7 @@ async def test_codex_exec_uses_headless_session_and_strict_output(monkeypatch):
     args, prompt, _, env = calls[0]
     assert args[:4] == ["codex", "exec", "--ephemeral", "--skip-git-repo-check"]
     assert "--sandbox" in args and args[args.index("--sandbox") + 1] == "read-only"
-    assert args[args.index("--model") + 1] == "gpt-5.6"
+    assert args[args.index("--model") + 1] == "gpt-5.6-sol"
     assert "EVIDENCE_JSON:" in prompt
     assert "OPENAI_API_KEY" not in env
 
