@@ -6,6 +6,7 @@ import subprocess
 import sys
 from pathlib import Path
 from ..ssh.asyncssh_transport import AsyncSSHTransport
+from ..detections.engine import DetectorEngine
 from .mcp_server import HostBridge
 from .port_allocator import PortAllocator
 
@@ -18,7 +19,7 @@ class BridgeSupervisor:
         bridge=HostBridge(host.id,transport,port,self.emit,self.settings.approval_secret,[]); self.bridges[host.id]=bridge
         await self.db.update_host(host.id,bridge_port=port,status="starting")
         try:
-            await bridge.start(); baseline=await bridge.create_baseline(); await self.db.save_baseline(host.id,baseline); await bridge.start_collectors(baseline); self._spawn_bridge_process(host,port); await self.db.update_host(host.id,status="online",visibility="full",last_error=None)
+            await bridge.start(); baseline=await bridge.create_baseline(); await self.db.save_baseline(host.id,baseline); await self.db.resolve_absent_findings(host.id,"new_listener",{DetectorEngine.listener_correlation(x) for x in baseline.get("listeners",[])}); await bridge.start_collectors(baseline); self._spawn_bridge_process(host,port); await self.db.update_host(host.id,status="online",visibility="full",last_error=None)
         except Exception as exc: await self.db.update_host(host.id,status="offline",last_error=str(exc)); raise
         return bridge
     async def stop_host(self,host_id):

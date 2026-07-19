@@ -49,6 +49,10 @@ class DetectorEngine:
         return f"{data.get('protocol','tcp')}|{data.get('address',data.get('local_address',''))}|{data.get('port')}"
 
     @staticmethod
+    def listener_correlation(data: dict) -> str:
+        return "new-listener:" + DetectorEngine._listener_key(data)
+
+    @staticmethod
     def _finding(event: Event, detector: str, correlation: str, severity: str, title: str, summary: str) -> Finding:
         now=event.observed_at
         return Finding(id="fnd_"+event.fingerprint.split(":")[-1][:24],host_id=event.host_id,detector_id=detector,correlation_key=correlation,state="new",severity=severity,confidence=0.8 if severity in {"high","critical"} else 0.6,title=title,machine_summary=summary,first_seen_at=now,last_seen_at=now,updated_at=now,event_ids=[event.id])

@@ -43,6 +43,8 @@ class AppState:
         if isinstance(item, MetricSample):
             await self.db.save_metric(item); await self.publish({"kind":"metric","data":item.model_dump(mode="json")}); await self.db.update_host(item.host_id,status="online",last_seen_at=item.observed_at); return None
         event=await self.db.upsert_event(item,self.settings.dedup_window_seconds); await self.publish({"kind":"event","data":event.model_dump(mode="json")})
+        if event.event_type == "listener_closed":
+            await self.db.resolve_finding(event.host_id, DetectorEngine.listener_correlation(event.data)); return None
         baseline=await self.db.get_baseline(event.host_id); findings=self.engine.evaluate(event,baseline)
         for finding in findings:
             finding=await self.db.upsert_finding(finding,event.id); await self.publish({"kind":"finding","data":finding.model_dump(mode="json")})

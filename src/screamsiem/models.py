@@ -138,6 +138,7 @@ class Investigation(BaseModel):
     alternative_explanations: list[str] = Field(default_factory=list)
     recommended_actions: list[RecommendedAction] = Field(default_factory=list)
     next_evidence_to_collect: list[str] = Field(default_factory=list)
+    analysis_source: Literal["gpt-5.6", "fallback"] = "fallback"
 
 
 class Action(BaseModel):

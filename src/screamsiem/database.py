@@ -127,6 +127,18 @@ class Database:
         await self._c().execute(f"UPDATE hosts SET {clause} WHERE id=?", (*values.values(), host_id))
         await self._c().commit()
 
+    async def resolve_finding(self, host_id: str, correlation_key: str) -> None:
+        await self._c().execute("UPDATE findings SET state='resolved',updated_at=? WHERE host_id=? AND correlation_key=? AND state NOT IN ('resolved','dismissed')", (iso(datetime.now(timezone.utc)), host_id, correlation_key))
+        await self._c().commit()
+
+    async def resolve_absent_findings(self, host_id: str, detector_id: str, active_correlations: set[str]) -> None:
+        cur = await self._c().execute("SELECT correlation_key FROM findings WHERE host_id=? AND detector_id=? AND state NOT IN ('resolved','dismissed')", (host_id, detector_id))
+        now = iso(datetime.now(timezone.utc))
+        for row in await cur.fetchall():
+            if row["correlation_key"] not in active_correlations:
+                await self._c().execute("UPDATE findings SET state='resolved',updated_at=? WHERE host_id=? AND detector_id=? AND correlation_key=?", (now, host_id, detector_id, row["correlation_key"]))
+        await self._c().commit()
+
     def _host(self, row: Any) -> Host:
         d = dict(row); d["tags"] = json.loads(d.pop("tags_json")); d.pop("known_hosts_path", None) if False else None
         return Host(**d)

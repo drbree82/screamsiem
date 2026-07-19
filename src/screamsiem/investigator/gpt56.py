@@ -18,7 +18,7 @@ class GPTInvestigator:
         tools=tool_adapter.schemas() if tool_adapter else []
         try:
             response=await asyncio.wait_for(self._run(evidence,tools,tool_adapter),self.timeout)
-            return self._parse(response)
+            result=self._parse(response); result.analysis_source="gpt-5.6"; return result
         except Exception:
             return self.fallback(finding,events)
 
@@ -46,4 +46,4 @@ class GPTInvestigator:
             if e.data.get("pid") and e.data.get("start_time"):
                 actions.append({"kind":"mcp_action","label":"Stop suspicious process","tool":"stop_process","arguments":{"pid":e.data["pid"],"expected_start_time":str(e.data["start_time"])},"impact":"Terminates the observed process after approval.","risk":"medium"}); break
         actions.append({"kind":"manual_command","label":"Review the host manually","command":"ssh admin@host 'ps auxf && ss -lntup'","impact":"Read-only evidence review.","risk":"low","verification_command":"ssh admin@host 'hostname && uptime'"})
-        return Investigation(title=finding.title,severity="critical" if finding.severity=="critical" else finding.severity,confidence=finding.confidence,plain_english_summary=finding.machine_summary,observations=observations,assessment="The deterministic evidence is suspicious and needs operator review. AI analysis is unavailable or running in deterministic demo mode.",alternative_explanations=["An administrator may have made a temporary change."],recommended_actions=actions,next_evidence_to_collect=[])
+        return Investigation(title=finding.title,severity="critical" if finding.severity=="critical" else finding.severity,confidence=finding.confidence,plain_english_summary=finding.machine_summary,observations=observations,assessment="The deterministic evidence is suspicious and needs operator review. AI analysis is unavailable or running in deterministic demo mode.",alternative_explanations=["An administrator may have made a temporary change."],recommended_actions=actions,next_evidence_to_collect=[],analysis_source="fallback")
