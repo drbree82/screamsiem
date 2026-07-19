@@ -53,6 +53,8 @@ curl -fsSL https://screamsiem-installer.flrgx-cxz.workers.dev/demo.sh | bash -s 
 
 When the listener disappears, the active finding resolves automatically while its event remains in incident history. New conditions create new active findings. With an API key configured, each finding shows `GPT-5.6 analysis`; the advisor reads current evidence through the host's read-only MCP tools and explains what it sees in plain English.
 
+The dashboard distinguishes configuration from execution: `gpt-5.6 · live` means the last investigation succeeded, while `gpt-5.6 · fallback` means the API request failed and the safe deterministic advisor was used. Check `/api/status` and `journalctl -u screamsiem` for the redacted failure reason.
+
 ## Submission details
 
 - Chosen track: Developer Tools

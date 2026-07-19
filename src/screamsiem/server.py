@@ -105,7 +105,8 @@ def create_app(config: Settings|None=None, db: Database|None=None, supervisor=No
     async def healthz(): return {"status":"ok","version":"0.1.0"}
     @app.get("/api/status")
     async def api_status():
-        return {"status":"ok","ai":{"enabled":bool(config.openai_api_key),"model":config.openai_model,"mode":"live" if config.openai_api_key else "deterministic-fallback"}}
+        advisor=state.investigator
+        return {"status":"ok","ai":{"enabled":bool(config.openai_api_key),"model":config.openai_model,"mode":"live" if config.openai_api_key else "deterministic-fallback","last_result":getattr(advisor,"last_result","not-run"),"calls":getattr(advisor,"calls",0),"successful":getattr(advisor,"successes",0),"fallbacks":getattr(advisor,"fallbacks",0),"last_error":getattr(advisor,"last_error",None)}}
     @app.get("/readyz")
     async def readyz():
         if database.db is None: raise HTTPException(503,"database unavailable")

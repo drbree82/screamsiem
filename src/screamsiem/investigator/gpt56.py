@@ -2,25 +2,39 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
+import re
 from typing import Any
 
 from ..models import Event, Finding, Investigation
 from .prompts import SYSTEM_PROMPT
 
+log = logging.getLogger("screamsiem.ai")
+
 
 class GPTInvestigator:
-    def __init__(self, client=None, model="gpt-5.6", timeout=60, max_tool_calls=8): self.client,self.model,self.timeout,self.max_tool_calls=client,model,timeout,max_tool_calls
+    def __init__(self, client=None, model="gpt-5.6", timeout=60, max_tool_calls=8):
+        self.client,self.model,self.timeout,self.max_tool_calls=client,model,timeout,max_tool_calls
+        self.calls=0; self.successes=0; self.fallbacks=0; self.last_result="not-run"; self.last_error=None
 
     async def investigate(self, finding: Finding, host_profile: dict, events: list[Event], tool_adapter=None, previous: dict|None=None) -> Investigation:
+        self.calls += 1
         evidence={"finding":finding.model_dump(mode="json"),"host_profile":host_profile,"events":[e.model_dump(mode="json") for e in events[-50:]],"previous":previous,"mutable_capabilities":["stop_process","stop_service","restart_service"]}
         if not self.client:
+            self.fallbacks += 1; self.last_result="fallback"; self.last_error="OpenAI client is not configured"
             return self.fallback(finding,events)
         tools=tool_adapter.schemas() if tool_adapter else []
         try:
             response=await asyncio.wait_for(self._run(evidence,tools,tool_adapter),self.timeout)
-            result=self._parse(response); result.analysis_source="gpt-5.6"; return result
-        except Exception:
+            result=self._parse(response); result.analysis_source="gpt-5.6"; self.successes += 1; self.last_result="live"; self.last_error=None; return result
+        except Exception as exc:
+            self.fallbacks += 1; self.last_result="fallback"; self.last_error=self._safe_error(exc); log.warning("GPT-5.6 investigation failed: %s", self.last_error)
             return self.fallback(finding,events)
+
+    @staticmethod
+    def _safe_error(exc: Exception) -> str:
+        value=re.sub(r"(sk-[A-Za-z0-9_-]{8,})", "<redacted-key>", str(exc))
+        return f"{type(exc).__name__}: {value[:240]}"
 
     async def _run(self,evidence,tools,adapter):
         response=await self.client.responses.create(model=self.model,instructions=SYSTEM_PROMPT,input=json.dumps(evidence),tools=tools,reasoning={"effort":"medium"},text={"format":{"type":"json_object"}})
