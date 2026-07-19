@@ -15,7 +15,7 @@ class AsyncSSHTransport:
         self._conn = None
 
     async def _connection(self):
-        if self._conn and not self._conn.is_closing():
+        if self._conn and not self._conn.is_closed():
             return self._conn
         try:
             import asyncssh
