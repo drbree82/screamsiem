@@ -18,15 +18,17 @@ KEY_DIR="$CONFIG_DIR/ssh"; DB_PATH="$DATA_DIR/screamsiem.db"
 need curl; need python3; need ssh; need ssh-keygen; need ip; need systemctl; need sudo
 if command -v apt-get >/dev/null 2>&1; then apt-get update -qq; DEBIAN_FRONTEND=noninteractive apt-get install -y -qq git python3-venv openssh-client iproute2 openssl nmap >/dev/null; fi
 id screamsiem >/dev/null 2>&1 || useradd --create-home --shell /bin/bash screamsiem
-if [[ -e "$INSTALL_DIR" && ! -d "$INSTALL_DIR/.git" ]]; then
-  die "$INSTALL_DIR exists and is not a ScreamSIEM checkout; rerun with --install-dir /opt/screamsiem-controller"
-fi
-install -d -m 755 "$INSTALL_DIR" "$DATA_DIR" "$CONFIG_DIR" "$KEY_DIR"; chown -R screamsiem:screamsiem "$INSTALL_DIR" "$DATA_DIR"; chmod 700 "$KEY_DIR"
-if [[ -d "$INSTALL_DIR" ]]; then
+if [[ -d "$INSTALL_DIR/.git" ]]; then
   git -C "$INSTALL_DIR" pull --ff-only
 else
+  if [[ -e "$INSTALL_DIR" ]]; then
+    [[ -d "$INSTALL_DIR" && -z "$(find "$INSTALL_DIR" -mindepth 1 -maxdepth 1 -print -quit)" ]] || die "$INSTALL_DIR exists and is not a ScreamSIEM checkout; rerun with --install-dir /opt/screamsiem-controller"
+  else
+    install -d -m 755 "$(dirname "$INSTALL_DIR")"
+  fi
   git clone --depth 1 "$REPO_URL" "$INSTALL_DIR"
 fi
+install -d -m 755 "$DATA_DIR" "$CONFIG_DIR" "$KEY_DIR"; chown -R screamsiem:screamsiem "$INSTALL_DIR" "$DATA_DIR"; chmod 700 "$KEY_DIR"
 python3 -m venv "$INSTALL_DIR/.venv"; "$INSTALL_DIR/.venv/bin/pip" install --quiet --upgrade pip; "$INSTALL_DIR/.venv/bin/pip" install --quiet -e "$INSTALL_DIR"; chown -R screamsiem:screamsiem "$INSTALL_DIR"
 if [[ ! -f "$KEY_DIR/id_ed25519" ]]; then sudo -u screamsiem ssh-keygen -q -t ed25519 -N '' -f "$KEY_DIR/id_ed25519" -C screamsiem-controller; fi
 chown -R screamsiem:screamsiem "$KEY_DIR"; chmod 600 "$KEY_DIR/id_ed25519"; chmod 644 "$KEY_DIR/id_ed25519.pub"
