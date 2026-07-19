@@ -29,6 +29,7 @@ else
   git clone --depth 1 "$REPO_URL" "$INSTALL_DIR"
 fi
 install -d -m 755 "$DATA_DIR" "$CONFIG_DIR" "$KEY_DIR"; chown -R screamsiem:screamsiem "$INSTALL_DIR" "$DATA_DIR"; chmod 700 "$KEY_DIR"
+chown -R screamsiem:screamsiem "$KEY_DIR"
 python3 -m venv "$INSTALL_DIR/.venv"; "$INSTALL_DIR/.venv/bin/pip" install --quiet --upgrade pip; "$INSTALL_DIR/.venv/bin/pip" install --quiet -e "$INSTALL_DIR"; chown -R screamsiem:screamsiem "$INSTALL_DIR"
 if [[ ! -f "$KEY_DIR/id_ed25519" ]]; then sudo -u screamsiem ssh-keygen -q -t ed25519 -N '' -f "$KEY_DIR/id_ed25519" -C screamsiem-controller; fi
 chown -R screamsiem:screamsiem "$KEY_DIR"; chmod 600 "$KEY_DIR/id_ed25519"; chmod 644 "$KEY_DIR/id_ed25519.pub"
