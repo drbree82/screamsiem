@@ -18,6 +18,91 @@ log = logging.getLogger("screamsiem.ai.codex")
 
 ProcessRunner = Callable[[list[str], str, str, dict[str, str]], Awaitable[tuple[int, str, str]]]
 
+# Codex uses the provider's strict structured-output mode.  Unlike Pydantic's
+# normal JSON schema, every object must explicitly disallow extra properties
+# and every property must be required (nullable properties represent optional
+# application values).  Keep this schema deliberately small; Investigation
+# remains the source of truth for final validation below.
+CODEX_OUTPUT_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "additionalProperties": False,
+    "properties": {
+        "title": {"type": "string"},
+        "severity": {"type": "string", "enum": ["low", "medium", "high", "critical"]},
+        "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+        "plain_english_summary": {"type": "string"},
+        "observations": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": False,
+                "properties": {
+                    "text": {"type": "string"},
+                    "evidence_ids": {"type": "array", "items": {"type": "string"}},
+                },
+                "required": ["text", "evidence_ids"],
+            },
+        },
+        "assessment": {"type": "string"},
+        "alternative_explanations": {"type": "array", "items": {"type": "string"}},
+        "recommended_actions": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": False,
+                "properties": {
+                    "kind": {"type": "string", "enum": ["mcp_action", "manual_command", "advisory"]},
+                    "label": {"type": "string"},
+                    "tool": {
+                        "anyOf": [
+                            {"type": "string", "enum": ["stop_process", "stop_service", "restart_service"]},
+                            {"type": "null"},
+                        ]
+                    },
+                    "arguments": {
+                        "type": "object",
+                        "additionalProperties": False,
+                        "properties": {
+                            "pid": {"anyOf": [{"type": "integer"}, {"type": "null"}]},
+                            "expected_start_time": {"anyOf": [{"type": "string"}, {"type": "null"}]},
+                            "unit": {"anyOf": [{"type": "string"}, {"type": "null"}]},
+                        },
+                        "required": ["pid", "expected_start_time", "unit"],
+                    },
+                    "command": {"anyOf": [{"type": "string"}, {"type": "null"}]},
+                    "verification_command": {"anyOf": [{"type": "string"}, {"type": "null"}]},
+                    "impact": {"type": "string"},
+                    "risk": {"type": "string"},
+                },
+                "required": [
+                    "kind",
+                    "label",
+                    "tool",
+                    "arguments",
+                    "command",
+                    "verification_command",
+                    "impact",
+                    "risk",
+                ],
+            },
+        },
+        "next_evidence_to_collect": {"type": "array", "items": {"type": "string"}},
+        "analysis_source": {"type": "string", "enum": ["gpt-5.6", "fallback"]},
+    },
+    "required": [
+        "title",
+        "severity",
+        "confidence",
+        "plain_english_summary",
+        "observations",
+        "assessment",
+        "alternative_explanations",
+        "recommended_actions",
+        "next_evidence_to_collect",
+        "analysis_source",
+    ],
+}
+
 
 class CodexInvestigator(GPTInvestigator):
     """Run the investigator through a locally authenticated Codex CLI session.
@@ -99,7 +184,7 @@ class CodexInvestigator(GPTInvestigator):
         with tempfile.TemporaryDirectory(prefix="screamsiem-codex-") as workdir:
             schema_path = Path(workdir) / "investigation.schema.json"
             output_path = Path(workdir) / "investigation.json"
-            schema_path.write_text(json.dumps(Investigation.model_json_schema()), encoding="utf-8")
+            schema_path.write_text(json.dumps(CODEX_OUTPUT_SCHEMA), encoding="utf-8")
             prompt = (
                 f"{SYSTEM_PROMPT}\n\n"
                 "You are being called by ScreamSIEM through Codex exec. Analyze only the JSON evidence below. "
