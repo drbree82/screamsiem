@@ -19,7 +19,7 @@ need curl; need python3; need ssh; need ssh-keygen; need ip; need systemctl; nee
 if command -v apt-get >/dev/null 2>&1; then apt-get update -qq; DEBIAN_FRONTEND=noninteractive apt-get install -y -qq git python3-venv openssh-client iproute2 openssl nmap >/dev/null; fi
 id screamsiem >/dev/null 2>&1 || useradd --create-home --shell /bin/bash screamsiem
 if [[ -d "$INSTALL_DIR/.git" ]]; then
-  git -C "$INSTALL_DIR" pull --ff-only
+  git -c safe.directory="$INSTALL_DIR" -C "$INSTALL_DIR" pull --ff-only
 else
   if [[ -e "$INSTALL_DIR" ]]; then
     [[ -d "$INSTALL_DIR" && -z "$(find "$INSTALL_DIR" -mindepth 1 -maxdepth 1 -print -quit)" ]] || die "$INSTALL_DIR exists and is not a ScreamSIEM checkout; rerun with --install-dir /opt/screamsiem-controller"
