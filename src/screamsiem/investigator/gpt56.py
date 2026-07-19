@@ -37,14 +37,14 @@ class GPTInvestigator:
         return f"{type(exc).__name__}: {value[:240]}"
 
     async def _run(self,evidence,tools,adapter):
-        response=await self.client.responses.create(model=self.model,instructions=SYSTEM_PROMPT,input=json.dumps(evidence),tools=tools,reasoning={"effort":"medium"},text={"format":{"type":"json_object"}})
+        response=await self.client.responses.create(model=self.model,instructions=SYSTEM_PROMPT,input=json.dumps({"format":"json","evidence":evidence}),tools=tools,reasoning={"effort":"medium"},text={"format":{"type":"json_object"}})
         calls=0
         while getattr(response,"output",None) and calls<self.max_tool_calls:
             function_calls=[x for x in response.output if getattr(x,"type","")=="function_call"]
             if not function_calls: break
             outputs=[]
             for call in function_calls:
-                result=await adapter.call(call.name,json.loads(call.arguments)); outputs.append({"type":"function_call_output","call_id":call.call_id,"output":json.dumps(result)[:50000]}); calls+=1
+                result=await adapter.call(call.name,json.loads(call.arguments)); outputs.append({"type":"function_call_output","call_id":call.call_id,"output":json.dumps({"format":"json","evidence":result})[:50000]}); calls+=1
             response=await self.client.responses.create(model=self.model,instructions=SYSTEM_PROMPT,previous_response_id=response.id,input=outputs,tools=tools,text={"format":{"type":"json_object"}})
         return getattr(response,"output_text","")
 
