@@ -61,5 +61,5 @@ for attempt in $(seq 1 12); do
   sleep 5
 done
 printf '%s\n' '[Unit]' 'Description=ScreamSIEM Linux security monitor' 'After=network-online.target' 'Wants=network-online.target' '[Service]' 'Type=simple' 'User=screamsiem' 'Group=screamsiem' "WorkingDirectory=$INSTALL_DIR" "EnvironmentFile=$CONFIG_DIR/screamsiem.env" "ExecStart=$INSTALL_DIR/.venv/bin/screamsiem serve" 'Restart=on-failure' 'RestartSec=5' '[Install]' 'WantedBy=multi-user.target' > /etc/systemd/system/screamsiem.service
-systemctl daemon-reload; systemctl enable --now screamsiem.service
+systemctl daemon-reload; systemctl enable screamsiem.service; systemctl restart screamsiem.service
 echo "screamsiem-siem: enrolled $found host(s); dashboard is http://127.0.0.1:8080"
