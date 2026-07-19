@@ -19,6 +19,7 @@ from .config import Settings, settings as default_settings
 from .database import Database, new_id
 from .detections.engine import DetectorEngine
 from .investigator.gpt56 import GPTInvestigator
+from .investigator.codex import CodexInvestigator
 from .models import Action, Event, Finding, Host, HostCreate, MetricSample, TimelineEntry
 from .ssh.asyncssh_transport import AsyncSSHTransport
 from .bridges.mcp_server import HostBridge
@@ -77,9 +78,12 @@ def create_app(config: Settings|None=None, db: Database|None=None, supervisor=No
     async def startup():
         await database.connect()
         if supervisor is None: state.supervisor=BridgeSupervisor(config,database,state.ingest)
-        if investigator is None and config.openai_api_key:
-            from openai import AsyncOpenAI
-            state.investigator=GPTInvestigator(client=AsyncOpenAI(api_key=config.openai_api_key),model=config.openai_model,timeout=config.investigation_timeout_seconds,max_tool_calls=config.openai_max_tool_calls)
+        if investigator is None:
+            if config.ai_provider == "codex":
+                state.investigator=CodexInvestigator(command=config.codex_command,model=config.openai_model,timeout=config.investigation_timeout_seconds,max_tool_calls=config.openai_max_tool_calls)
+            elif config.ai_provider in {"api", "auto"} and config.openai_api_key:
+                from openai import AsyncOpenAI
+                state.investigator=GPTInvestigator(client=AsyncOpenAI(api_key=config.openai_api_key),model=config.openai_model,timeout=config.investigation_timeout_seconds,max_tool_calls=config.openai_max_tool_calls)
         async def restore_hosts():
             for host in await database.list_hosts():
                 if host.id=="demo-host" or await state.supervisor.get(host.id): continue
@@ -106,7 +110,9 @@ def create_app(config: Settings|None=None, db: Database|None=None, supervisor=No
     @app.get("/api/status")
     async def api_status():
         advisor=state.investigator
-        return {"status":"ok","ai":{"enabled":bool(config.openai_api_key),"model":config.openai_model,"mode":"live" if config.openai_api_key else "deterministic-fallback","last_result":getattr(advisor,"last_result","not-run"),"calls":getattr(advisor,"calls",0),"successful":getattr(advisor,"successes",0),"fallbacks":getattr(advisor,"fallbacks",0),"last_error":getattr(advisor,"last_error",None)}}
+        auth=await advisor.login_status() if isinstance(advisor,CodexInvestigator) else None
+        enabled=bool(config.openai_api_key) if config.ai_provider in {"api", "auto"} else bool(auth and auth.get("authenticated"))
+        return {"status":"ok","ai":{"enabled":enabled,"provider":config.ai_provider,"model":config.openai_model,"mode":getattr(advisor,"mode","fallback"),"auth":auth,"last_result":getattr(advisor,"last_result","not-run"),"calls":getattr(advisor,"calls",0),"successful":getattr(advisor,"successes",0),"fallbacks":getattr(advisor,"fallbacks",0),"last_error":getattr(advisor,"last_error",None)}}
     @app.get("/readyz")
     async def readyz():
         if database.db is None: raise HTTPException(503,"database unavailable")

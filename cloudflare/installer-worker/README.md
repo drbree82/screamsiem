@@ -2,6 +2,8 @@
 
 This Worker serves the two bootstrap scripts from the `installers/` directory and stores short-lived enrollment metadata in Workers KV. It stores only host metadata and the controller public key; no private key is uploaded.
 
+The SIEM bootstrap supports headless Codex authentication. Select `codex` when prompted and it installs the Codex CLI when needed, then prints a one-time device-auth URL and code. Paste those into a browser on another computer to sign in with ChatGPT; the server itself does not need a browser.
+
 From this directory:
 
 ```bash

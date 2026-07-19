@@ -23,8 +23,10 @@ class Settings:
     base_url: str = ""
     trust_proxy: bool = False
     allow_unauthenticated_remote: bool = False
+    ai_provider: str = "api"
     openai_api_key: str = ""
     openai_model: str = "gpt-5.6"
+    codex_command: str = "codex"
     openai_reasoning_effort: str = "medium"
     openai_max_tool_calls: int = 8
     investigation_timeout_seconds: int = 60
@@ -49,8 +51,10 @@ class Settings:
             base_url=os.getenv("SCREAMSIEM_BASE_URL", defaults.base_url),
             trust_proxy=_bool("SCREAMSIEM_TRUST_PROXY"),
             allow_unauthenticated_remote=_bool("SCREAMSIEM_ALLOW_UNAUTHENTICATED_REMOTE"),
+            ai_provider=os.getenv("SCREAMSIEM_AI_PROVIDER", defaults.ai_provider).lower(),
             openai_api_key=os.getenv("OPENAI_API_KEY", ""),
             openai_model=os.getenv("OPENAI_MODEL", defaults.openai_model),
+            codex_command=os.getenv("SCREAMSIEM_CODEX_COMMAND", defaults.codex_command),
             openai_reasoning_effort=os.getenv("OPENAI_REASONING_EFFORT", defaults.openai_reasoning_effort),
             openai_max_tool_calls=int(os.getenv("OPENAI_MAX_TOOL_CALLS", defaults.openai_max_tool_calls)),
             investigation_timeout_seconds=int(os.getenv("OPENAI_INVESTIGATION_TIMEOUT_SECONDS", defaults.investigation_timeout_seconds)),

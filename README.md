@@ -25,7 +25,7 @@ curl -fsSL https://screamsiem-installer.flrgx-cxz.workers.dev/siem.sh \
 
 Wait until the command says `enrolled 1 host(s)`.
 
-During setup, the controller asks for your OpenAI API key. Type it into the hidden prompt and press Enter. This enables the live GPT-5.6 advisor. If you press Enter without a key, the monitor still works with its deterministic fallback investigator.
+During setup, choose `codex` to use a ChatGPT subscription through Codex. The headless installer prints a one-time device-auth URL and code; open that URL on any computer, sign in with ChatGPT, and enter the code. No API key is stored. Choose `api` for usage-based API-key access, or `fallback` for deterministic-only operation.
 
 ### 3. On your own computer, open the dashboard
 
@@ -51,7 +51,7 @@ It starts a temporary HTTP listener on port `4444` for two minutes. ScreamSIEM s
 curl -fsSL https://screamsiem-installer.flrgx-cxz.workers.dev/demo.sh | bash -s -- --stop
 ```
 
-When the listener disappears, the active finding resolves automatically while its event remains in incident history. New conditions create new active findings. With an API key configured, each finding shows `GPT-5.6 analysis`; the advisor reads current evidence through the host's read-only MCP tools and explains what it sees in plain English.
+When the listener disappears, the active finding resolves automatically while its event remains in incident history. New conditions create new active findings. With either provider configured, each finding shows `GPT-5.6 analysis`. API-key mode can request current evidence through the host's read-only MCP tools. Codex mode sends the bounded evidence bundle to `codex exec` in a read-only, ephemeral workspace.
 
 The dashboard distinguishes configuration from execution: `gpt-5.6 · live` means the last investigation succeeded, while `gpt-5.6 · fallback` means the API request failed and the safe deterministic advisor was used. Check `/api/status` and `journalctl -u screamsiem` for the redacted failure reason.
 
@@ -82,6 +82,16 @@ export OPENAI_API_KEY="..."
 export OPENAI_MODEL="gpt-5.6"
 screamsiem serve
 ```
+
+To use ChatGPT browser authentication on a local or headless machine, install the Codex CLI if needed, then run device login. The command prints the URL and code instead of requiring a local browser:
+
+```bash
+npm install --global @openai/codex
+SCREAMSIEM_AI_PROVIDER=codex screamsiem auth login --device-auth
+SCREAMSIEM_AI_PROVIDER=codex screamsiem serve
+```
+
+For the systemd installer, select `codex` when prompted. It installs the CLI when needed, stores its session under the service account's `CODEX_HOME`, and prints the same browser URL/code flow. Authentication is provided by Codex CLI; ScreamSIEM never reads or persists the Codex credentials.
 
 ## Real SSH host
 

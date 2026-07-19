@@ -16,7 +16,7 @@ while [[ $# -gt 0 ]]; do case "$1" in --enrollment-code) ENROLLMENT_CODE="${2:?m
 KEY_DIR="$CONFIG_DIR/ssh"; DB_PATH="$DATA_DIR/screamsiem.db"
 [[ "$ENROLLMENT_CODE" =~ ^[A-Za-z0-9._:-]{12,128}$ ]] || die "pass the same enrollment code used on hosts"
 need curl; need python3; need ssh; need ssh-keygen; need ip; need systemctl; need sudo
-if command -v apt-get >/dev/null 2>&1; then apt-get update -qq; DEBIAN_FRONTEND=noninteractive apt-get install -y -qq git python3-venv openssh-client iproute2 openssl nmap >/dev/null; fi
+if command -v apt-get >/dev/null 2>&1; then apt-get update -qq; DEBIAN_FRONTEND=noninteractive apt-get install -y -qq git python3-venv openssh-client iproute2 openssl nmap nodejs npm >/dev/null; fi
 id screamsiem >/dev/null 2>&1 || useradd --create-home --shell /bin/bash screamsiem
 if [[ -d "$INSTALL_DIR/.git" ]]; then
   git -c safe.directory="$INSTALL_DIR" -C "$INSTALL_DIR" pull --ff-only
@@ -36,16 +36,32 @@ chown -R screamsiem:screamsiem "$KEY_DIR"; chmod 600 "$KEY_DIR/id_ed25519"; chmo
 CONTROLLER_ADDRESS="${SCREAMSIEM_CONTROLLER_ADDRESS:-$(ip route get 1.1.1.1 2>/dev/null | sed -n 's/.* src \([^ ]*\).*/\1/p' | head -1)}"; CONTROLLER_ADDRESS="${CONTROLLER_ADDRESS:-$(hostname -I | awk '{print $1}')}"
 payload="$(python3 -c 'import json,sys; print(json.dumps({"public_key":open(sys.argv[1]).read().strip(),"controller_address":sys.argv[2],"controller_user":"screamsiem"},separators=(",",":")))' "$KEY_DIR/id_ed25519.pub" "$CONTROLLER_ADDRESS")"
 curl -fsS --retry 3 -X POST "$WORKER_URL/v1/enroll/$ENROLLMENT_CODE/controller" -H 'content-type: application/json' --data-binary "$payload" >/dev/null || die "could not publish controller key"
+AI_PROVIDER="${SCREAMSIEM_AI_PROVIDER:-}"
 OPENAI_API_KEY="${OPENAI_API_KEY:-}"
 if [[ -z "$OPENAI_API_KEY" && -r "$CONFIG_DIR/screamsiem.env" ]]; then
   OPENAI_API_KEY="$(sed -n 's/^OPENAI_API_KEY=//p' "$CONFIG_DIR/screamsiem.env" | tail -1)"
 fi
-if [[ -z "$OPENAI_API_KEY" && -r /dev/tty ]]; then
+if [[ -z "$AI_PROVIDER" && -r /dev/tty ]]; then
+  read -r -p 'AI provider [codex/api/fallback] (default: api): ' AI_PROVIDER < /dev/tty
+  AI_PROVIDER="${AI_PROVIDER:-api}"
+fi
+AI_PROVIDER="${AI_PROVIDER:-api}"
+[[ "$AI_PROVIDER" == "codex" || "$AI_PROVIDER" == "api" || "$AI_PROVIDER" == "fallback" ]] || die "SCREAMSIEM_AI_PROVIDER must be codex, api, or fallback"
+install -d -m 700 "$CONFIG_DIR/codex"; chown screamsiem:screamsiem "$CONFIG_DIR/codex"
+if [[ "$AI_PROVIDER" == "codex" ]]; then
+  OPENAI_API_KEY=""
+  if ! command -v codex >/dev/null 2>&1; then
+    need npm
+    npm install --global --quiet @openai/codex || die 'could not install the Codex CLI'
+  fi
+  echo 'Starting headless Codex device login. Copy the printed URL and code into a browser on another computer.'
+  sudo -u screamsiem -H env CODEX_HOME="$CONFIG_DIR/codex" "$INSTALL_DIR/.venv/bin/screamsiem" auth login --device-auth < /dev/tty || die 'Codex device login failed; rerun `sudo -u screamsiem -H CODEX_HOME='"$CONFIG_DIR/codex"' codex login --device-auth`'
+elif [[ "$AI_PROVIDER" == "api" && -z "$OPENAI_API_KEY" && -r /dev/tty ]]; then
   read -r -s -p 'OpenAI API key (optional; press Enter for deterministic fallback): ' OPENAI_API_KEY < /dev/tty
   echo
 fi
 INTERNAL_SECRET="${SCREAMSIEM_INTERNAL_SECRET:-$(openssl rand -hex 32)}"; APPROVAL_SECRET="${SCREAMSIEM_APPROVAL_SECRET:-$(openssl rand -hex 32)}"
-printf 'SCREAMSIEM_HOST=127.0.0.1\nSCREAMSIEM_PORT=8080\nSCREAMSIEM_DATABASE=%s\nSCREAMSIEM_INTERNAL_SECRET=%s\nSCREAMSIEM_APPROVAL_SECRET=%s\nOPENAI_MODEL=gpt-5.6\nOPENAI_API_KEY=%s\n' "$DB_PATH" "$INTERNAL_SECRET" "$APPROVAL_SECRET" "$OPENAI_API_KEY" > "$CONFIG_DIR/screamsiem.env"
+printf 'SCREAMSIEM_HOST=127.0.0.1\nSCREAMSIEM_PORT=8080\nSCREAMSIEM_DATABASE=%s\nSCREAMSIEM_INTERNAL_SECRET=%s\nSCREAMSIEM_APPROVAL_SECRET=%s\nSCREAMSIEM_AI_PROVIDER=%s\nCODEX_HOME=%s\nOPENAI_MODEL=gpt-5.6\nOPENAI_API_KEY=%s\n' "$DB_PATH" "$INTERNAL_SECRET" "$APPROVAL_SECRET" "$AI_PROVIDER" "$CONFIG_DIR/codex" "$OPENAI_API_KEY" > "$CONFIG_DIR/screamsiem.env"
 chown root:screamsiem "$CONFIG_DIR/screamsiem.env"; chmod 640 "$CONFIG_DIR/screamsiem.env"
 KNOWN_HOSTS="$KEY_DIR/known_hosts"; touch "$KNOWN_HOSTS"; chown screamsiem:screamsiem "$KNOWN_HOSTS"; chmod 600 "$KNOWN_HOSTS"
 CIDR="${SCREAMSIEM_CIDR:-$(ip route show scope link 2>/dev/null | awk '$1 ~ /^[0-9].*\/[0-9]+$/ {print $1; exit}')}"
