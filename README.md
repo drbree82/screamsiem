@@ -43,6 +43,28 @@ screamsiem serve
 
 The server restores registered hosts, allocates a loopback MCP port in `9100-9199`, and launches a per-host bridge with a `0600` configuration. The bridge owns only that host's SSH connection and typed tools. Host-key verification is enabled by default; `--insecure-skip-host-key-check` is intentionally marked unsafe and is for disposable demos only.
 
+## Curl-based fleet enrollment
+
+For a hands-off LAN deployment, deploy the installer Worker described in [`cloudflare/installer-worker/README.md`](cloudflare/installer-worker/README.md), choose one high-entropy enrollment code, and use the same code for every host in that enrollment window.
+
+On each monitored machine, run once as root:
+
+```bash
+curl -fsSL https://screamsiem-installer.flrgx-cxz.workers.dev/monitored.sh \
+  | sudo bash -s -- --enrollment-code 'REPLACE_WITH_LONG_RANDOM_CODE'
+```
+
+On the SIEM machine, run once as root:
+
+```bash
+curl -fsSL https://screamsiem-installer.flrgx-cxz.workers.dev/siem.sh \
+  | sudo bash -s -- --enrollment-code 'REPLACE_WITH_LONG_RANDOM_CODE'
+```
+
+The monitored bootstrap creates the dedicated `screamsiem` SSH account, registers bounded host metadata, and installs a short-lived systemd poller. The SIEM bootstrap generates its SSH keypair locally, publishes only the public key to the enrollment Worker, discovers enrolled addresses plus local ARP/mDNS/nmap candidates, verifies the host marker over SSH, imports the hosts, and starts the systemd service.
+
+No private key is uploaded to Cloudflare. The dashboard remains loopback-only; access it through an SSH tunnel unless you deliberately configure an authenticated reverse proxy.
+
 ## How to test
 
 Run the full offline suite:

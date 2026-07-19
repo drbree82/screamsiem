@@ -12,7 +12,11 @@ def parser():
     sub.add_parser("serve"); return p
 
 async def add_host(args):
-    db=Database(settings.database); await db.connect(); tags=[x for x in args.tags.split(",") if x]+(["unsafe-ssh"] if args.insecure_skip_host_key_check else []); host=Host(id=new_id("host"),name=args.name,address=args.address,port=args.port,username=args.username,identity_path=os.path.expanduser(args.identity_path),known_hosts_path=args.known_hosts_path,tags=tags,status="pending",visibility="unknown",created_at=datetime.now(timezone.utc)); await db.add_host(host); print(json.dumps(host.model_dump(mode="json"),indent=2)); await db.close()
+    db=Database(settings.database); await db.connect();
+    for existing in await db.list_hosts():
+        if existing.name == args.name or existing.address == args.address:
+            print(json.dumps(existing.model_dump(mode="json"),indent=2)); await db.close(); return
+    tags=[x for x in args.tags.split(",") if x]+(["unsafe-ssh"] if args.insecure_skip_host_key_check else []); host=Host(id=new_id("host"),name=args.name,address=args.address,port=args.port,username=args.username,identity_path=os.path.expanduser(args.identity_path),known_hosts_path=args.known_hosts_path,tags=tags,status="pending",visibility="unknown",created_at=datetime.now(timezone.utc)); await db.add_host(host); print(json.dumps(host.model_dump(mode="json"),indent=2)); await db.close()
 
 def main():
     args=parser().parse_args()

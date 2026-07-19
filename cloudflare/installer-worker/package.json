@@ -1,0 +1,8 @@
+{
+  "name": "screamsiem-installer-worker",
+  "private": true,
+  "devDependencies": {
+    "@cloudflare/workers-types": "latest",
+    "wrangler": "latest"
+  }
+}

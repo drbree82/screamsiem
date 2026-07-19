@@ -1,0 +1,13 @@
+{
+  "$schema": "https://developers.cloudflare.com/workers/wrangler/config-schema.json",
+  "name": "screamsiem-installer",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-07-19",
+  "assets": {
+    "directory": "../../installers",
+    "binding": "ASSETS"
+  },
+  "kv_namespaces": [
+    { "binding": "ENROLLMENTS", "id": "8d1e33fc71234cc591508e20fc133724" }
+  ]
+}
