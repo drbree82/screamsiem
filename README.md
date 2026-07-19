@@ -2,6 +2,53 @@
 
 ScreamSIEM is a lightweight, AI-assisted Linux security monitor for small fleets. It connects to Linux hosts over SSH, learns a baseline from ordinary Unix interfaces, watches processes, sockets, services, journal/log streams and metrics, detects suspicious changes deterministically, and uses GPT-5.6 to investigate bounded evidence through local read-only MCP tools.
 
+## Start here: three easy commands
+
+Use the same long code in both commands. Replace `YOUR_CODE` with your own random code.
+
+### 1. On every computer you want to watch
+
+```bash
+curl -fsSL https://screamsiem-installer.flrgx-cxz.workers.dev/monitored.sh \
+  | sudo bash -s -- --enrollment-code 'YOUR_CODE'
+```
+
+### 2. On the computer that runs ScreamSIEM
+
+```bash
+curl -fsSL https://screamsiem-installer.flrgx-cxz.workers.dev/siem.sh \
+  | sudo bash -s -- \
+    --enrollment-code 'YOUR_CODE' \
+    --install-dir /opt/screamsiem-controller \
+    --cidr 192.168.68.0/24
+```
+
+Wait until the command says `enrolled 1 host(s)`.
+
+### 3. On your own computer, open the dashboard
+
+```bash
+ssh -N -L 8080:127.0.0.1:8080 YOUR_USERNAME@SIEM_IP
+```
+
+Keep that command running, then open [http://127.0.0.1:8080/](http://127.0.0.1:8080/) in your browser.
+
+The setup commands need `sudo`. The dashboard tunnel uses your normal SSH username; you do not need to log in as root.
+
+## Make the SIEM scream
+
+On a monitored computer, run this safe demo command:
+
+```bash
+curl -fsSL https://screamsiem-installer.flrgx-cxz.workers.dev/demo.sh | bash
+```
+
+It starts a temporary HTTP listener on port `4444` for two minutes. ScreamSIEM should show a critical unexpected-listener finding within a few seconds. Stop it early with:
+
+```bash
+curl -fsSL https://screamsiem-installer.flrgx-cxz.workers.dev/demo.sh | bash -s -- --stop
+```
+
 ## Submission details
 
 - Chosen track: Developer Tools
@@ -43,7 +90,7 @@ screamsiem serve
 
 The server restores registered hosts, allocates a loopback MCP port in `9100-9199`, and launches a per-host bridge with a `0600` configuration. The bridge owns only that host's SSH connection and typed tools. Host-key verification is enabled by default; `--insecure-skip-host-key-check` is intentionally marked unsafe and is for disposable demos only.
 
-## Curl-based fleet enrollment
+## Curl-based fleet enrollment: details
 
 For a hands-off LAN deployment, deploy the installer Worker described in [`cloudflare/installer-worker/README.md`](cloudflare/installer-worker/README.md), choose one high-entropy enrollment code, and use the same code for every host in that enrollment window.
 
@@ -75,7 +122,7 @@ Run the full offline suite:
 make test
 ```
 
-The 11 tests cover parsers, stable fingerprints, P0 detectors, loopback bridge routing, bounded read tools, approval signatures, argument mismatch, expiry/replay protection, manual-command validation, the HTTP dashboard, deterministic finding creation, and approved fake remediation. Tests never require network access, root, an SSH server, or an OpenAI key.
+The offline tests cover parsers, stable fingerprints, baseline-aware detectors, loopback bridge routing, bounded read tools, approval signatures, argument mismatch, expiry/replay protection, manual-command validation, the HTTP dashboard, deterministic finding creation, and approved fake remediation. Tests never require network access, root, an SSH server, or an OpenAI key.
 
 The included sample data is generated at runtime by `scripts/demo.sh`; no external fixture download is needed. For a real SSH demo, `scripts/demo_attack.sh` prints the reversible command `python3 -m http.server 4444 --directory /tmp`.
 
