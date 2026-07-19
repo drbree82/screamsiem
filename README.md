@@ -109,6 +109,43 @@ For the systemd installer, select `codex` when prompted. It installs the CLI whe
 
 To update an existing installed controller, rerun the same `siem.sh` command with its original `--install-dir`. The installer fast-forwards the checkout, preserves the enrollment data and existing Codex ChatGPT login, and rewrites the provider configuration. Updating does not automatically re-investigate old findings; use the dashboard or `POST /api/findings/{id}/investigate` for an active finding.
 
+## Uninstall
+
+These commands remove the ScreamSIEM services, local configuration, SSH keys, database, and dedicated `screamsiem` service account. Run each block on the named host, not on your workstation. Back up `/var/lib/screamsiem` first if you need to retain incident history.
+
+On the controller machine:
+
+```bash
+sudo systemctl disable --now screamsiem.service
+sudo rm -f /etc/systemd/system/screamsiem.service
+sudo systemctl daemon-reload
+sudo rm -rf /opt/screamsiem-controller /var/lib/screamsiem /etc/screamsiem
+sudo userdel --remove screamsiem
+```
+
+On each monitored machine, first stop any optional demo listener. Set `SCREAMSIEM_DEMO_PORT` to the port used by the demo:
+
+```bash
+curl -fsSL https://screamsiem-installer.flrgx-cxz.workers.dev/demo.sh \
+  | env SCREAMSIEM_DEMO_PORT=4444 bash -s -- --stop
+```
+
+Then remove the monitored-host enrollment service:
+
+```bash
+sudo systemctl disable --now screamsiem-enroll.timer
+sudo systemctl stop screamsiem-enroll.service
+sudo rm -f \
+  /etc/systemd/system/screamsiem-enroll.service \
+  /etc/systemd/system/screamsiem-enroll.timer \
+  /usr/local/sbin/screamsiem-enroll
+sudo systemctl daemon-reload
+sudo rm -rf /etc/screamsiem
+sudo userdel --remove screamsiem
+```
+
+The `userdel` command may report that a mail spool does not exist; that is harmless when the dedicated account has already been removed. The short-lived enrollment record in Cloudflare KV is not deleted by host uninstall and expires automatically.
+
 ## Real SSH host
 
 ```bash
