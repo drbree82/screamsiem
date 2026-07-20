@@ -223,15 +223,6 @@ The offline tests cover parsers, stable fingerprints, baseline-aware detectors, 
 
 The included sample data is generated at runtime by `scripts/demo.sh`; no external fixture download is needed. For a real SSH demo, `scripts/demo_attack.sh` prints the reversible command `python3 -m http.server 4444 --directory /tmp`.
 
-## What judges should look for
-
-1. Start the deterministic demo and open the dashboard.
-2. Watch the green host state and live SSE connection.
-3. Observe the full-width red critical banner for the unexpected listener and suspicious `/tmp` process.
-4. Review the evidence, confidence, structured assessment, and action cards.
-5. Approve the typed process-stop action; the exact action is signed, validated by the bridge, executed once, and written to the timeline.
-6. Contrast it with the model-generated manual command, which is copy-only and never automatically executed.
-
 ## Architecture
 
 The central FastAPI server owns SQLite persistence, baselines, deterministic detection, investigation orchestration, approvals, the dashboard and SSE. Each host has an SSH-native bridge with collectors and a loopback-only FastMCP boundary. GPT-5.6 sees bounded evidence and read-only function schemas; it never receives private keys, approval secrets, arbitrary shell access, or mutable tools during investigation.
